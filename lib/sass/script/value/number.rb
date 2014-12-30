@@ -260,13 +260,17 @@ module Sass::Script::Value
     #   (e.g. `px*in`)
     def to_s(opts = {})
       if opts[:style] == :compressed
-        return '0' if int? && to_i == 0 # remove units from integer zeros
-        return original.sub(/^0\./, '.') if original
+        return original[1..-1] if original.start_with?("0.")
       end
 
       return original if original
       raise Sass::SyntaxError.new("#{inspect} isn't a valid CSS value.") unless legal_units?
       inspect
+    end
+
+    def compress(opts = {})
+      str = self.class.round(self.value).to_s
+      ("%0.#{self.class.precision}f" % value).gsub(/0*$/, '') if str.include?('e')
     end
 
     # Returns a readable representation of this number.
@@ -278,13 +282,11 @@ module Sass::Script::Value
     def inspect(opts = {})
       return original if original
 
-      value = self.class.round(self.value)
-      str = value.to_s
+      str = compress( opts )
 
       # Ruby will occasionally print in scientific notation if the number is
       # small enough. That's technically valid CSS, but it's not well-supported
       # and confusing.
-      str = ("%0.#{self.class.precision}f" % value).gsub(/0*$/, '') if str.include?('e')
 
       unitless? ? str : "#{str}#{unit_str}"
     end
